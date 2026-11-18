@@ -3,7 +3,8 @@ requests
 pydantic
 sqlalchemy
 psycopg2-binary
-dbt-postgres
+dbt-core==1.12.6
+dbt-postgres==1.11.0
 great-expectations
 pytest
 ruff
