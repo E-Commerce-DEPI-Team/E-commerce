@@ -1,10 +1,11 @@
 x-airflow-common: &airflow-common
-  image: apache/airflow:2.10.4
+  build: .
+  image: olist-airflow:latest
   environment: &airflow-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-db:5432/${AIRFLOW_DB_NAME}
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-    _PIP_ADDITIONAL_REQUIREMENTS: "pandas sqlalchemy psycopg2-binary dbt-postgres"
+    DBT_PROFILES_DIR: /opt/airflow/dbt_project
     DWH_USER: ${DWH_USER}
     DWH_PASSWORD: ${DWH_PASSWORD}
     DWH_DB: ${DWH_DB}
@@ -30,7 +31,7 @@ services:
       POSTGRES_PASSWORD: ${DWH_PASSWORD}
       POSTGRES_DB: ${DWH_DB}
     ports:
-      - "${DWH_PORT:-5433}:5432"
+      - "${DWH_HOST_PORT:-5433}:5432"
     volumes:
       - dwh_data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d
