@@ -1,6 +1,7 @@
-import requests
 import json
 from pathlib import Path
+
+import requests
 
 # World Bank API base URL
 base_url = "https://api.worldbank.org/v2/country/BR/indicator/"
