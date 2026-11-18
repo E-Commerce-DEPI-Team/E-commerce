@@ -1,6 +1,6 @@
+import csv
 import json
 from pathlib import Path
-import csv
 
 # Define input directory
 input_dir = Path("data/raw/external")

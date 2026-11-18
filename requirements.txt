@@ -1,0 +1,9 @@
+pandas
+requests
+pydantic
+sqlalchemy
+psycopg2-binary
+dbt-postgres
+great-expectations
+pytest
+ruff
