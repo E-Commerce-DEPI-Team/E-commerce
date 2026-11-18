@@ -1,8 +1,8 @@
-﻿name: 'olist_dbt'
+name: 'olist_dbt'
 version: '1.0.0'
 config-version: 2
 
-profile: 'olist_dbt'
+profile: 'olist'
 
 model-paths: ['models']
 analysis-paths: ['analyses']
