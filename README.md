@@ -127,3 +127,54 @@ Generated CSV files and original Olist CSV datasets are excluded from Git.
 - No records are arbitrarily deleted during preparation.
 
 For more details, check the documentation in the `docs/` directory.
+
+## Running the Platform with Docker
+
+### Prerequisites
+- Docker Desktop (running) and Git
+
+### Quick start
+```bash
+git clone <repository-url>
+cd E-commerce
+cp .env.example .env        # Windows: copy .env.example .env
+# edit .env and set real passwords
+docker compose up -d --build
+```
+The first build takes a few minutes; later starts take about 30 seconds.
+
+### Services
+
+| Service | Container | URL / Port |
+|---|---|---|
+| Data Warehouse (PostgreSQL 16) | olist_dwh | localhost:5433 |
+| Airflow metadata DB | olist_airflow_db | internal only |
+| Airflow web UI | olist_airflow_web | http://localhost:8080 |
+| Airflow scheduler | olist_airflow_scheduler | internal only |
+
+Log in to Airflow with `AIRFLOW_ADMIN_USER` / `AIRFLOW_ADMIN_PASSWORD` from `.env`.
+`olist_airflow_init` runs once and exits with code 0; this is expected.
+
+### Connecting to the Data Warehouse
+- From your machine (Python scripts, Power BI): host `localhost`, port `5433`, with `DWH_USER`, `DWH_PASSWORD`, `DWH_DB` from `.env`.
+- From inside Docker (Airflow, dbt): host `dwh-db`, port `5432`.
+
+Schemas created automatically on first start: `raw`, `staging`, `core`, `analytics`.
+
+### dbt
+dbt is installed in the Airflow image. The project is in `dbt_project/` and reads credentials from environment variables (`profiles.yml`).
+```bash
+docker exec -u airflow -w /opt/airflow/dbt_project olist_airflow_scheduler dbt debug
+```
+
+### Useful commands
+```bash
+docker compose ps -a          # status of all services
+docker compose logs -f airflow-scheduler
+docker compose down           # stop (data is kept)
+docker compose down -v        # stop and DELETE all data (full reset)
+```
+Init SQL scripts only run when the DWH volume is empty, so after changing `docker/postgres/init/` run `docker compose down -v` once.
+
+### CI
+GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: ruff lint, pytest (when `tests/` exists), `dbt parse`, and a Docker image build.
