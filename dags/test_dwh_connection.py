@@ -2,7 +2,7 @@
 
 Trigger it manually from the Airflow UI. It connects to Postgres using the
 DWH_* environment variables from docker-compose.yml and verifies that the
-raw, staging and marts schemas exist.
+raw, staging, core and analytics schemas exist.
 """
 
 import os
@@ -12,7 +12,7 @@ import psycopg2
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-EXPECTED_SCHEMAS = {"raw", "staging", "marts"}
+EXPECTED_SCHEMAS = {"raw", "staging", "core", "analytics"}
 
 
 def check_dwh_connection():
@@ -37,12 +37,12 @@ def check_dwh_connection():
     missing = EXPECTED_SCHEMAS - schemas
     if missing:
         raise ValueError(f"Missing schemas: {sorted(missing)}")
-    print("OK: raw, staging and marts all exist.")
+    print("OK: raw, staging, core and analytics all exist.")
 
 
 with DAG(
     dag_id="test_dwh_connection",
-    description="Checks the Airflow -> DWH connection and the 3 schemas",
+    description="Checks the Airflow -> DWH connection and the 4 schemas",
     start_date=datetime(2026, 1, 1),
     schedule=None,
     catchup=False,
