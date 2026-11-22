@@ -20,11 +20,10 @@ WITH payment_rows AS (
     INNER JOIN {{ ref('stg_orders') }} AS o
         ON p.order_id = o.order_id
     {% if is_incremental() %}
-    WHERE o.order_purchase_timestamp >= DATEADD(
-        day,
-        -{{ var('incremental_lookback_days', 30) }},
-        (SELECT COALESCE(MAX(order_purchase_timestamp), CONVERT(datetime2(0), '1900-01-01')) FROM {{ this }})
-    )
+    WHERE o.order_purchase_timestamp >= (
+        SELECT COALESCE(MAX(order_purchase_timestamp), TIMESTAMP '1900-01-01')
+        FROM {{ this }}
+    ) - ({{ var('incremental_lookback_days', 30) }} * INTERVAL '1 day')
     {% endif %}
 )
 SELECT

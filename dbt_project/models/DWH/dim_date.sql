@@ -8,36 +8,43 @@ WITH all_dates AS (
     WHERE order_purchase_timestamp IS NOT NULL
 
     UNION
+
     SELECT CAST(order_approved_at AS date)
     FROM {{ ref('stg_orders') }}
     WHERE order_approved_at IS NOT NULL
 
     UNION
+
     SELECT CAST(order_delivered_carrier_date AS date)
     FROM {{ ref('stg_orders') }}
     WHERE order_delivered_carrier_date IS NOT NULL
 
     UNION
+
     SELECT CAST(order_delivered_customer_date AS date)
     FROM {{ ref('stg_orders') }}
     WHERE order_delivered_customer_date IS NOT NULL
 
     UNION
+
     SELECT CAST(order_estimated_delivery_date AS date)
     FROM {{ ref('stg_orders') }}
     WHERE order_estimated_delivery_date IS NOT NULL
 
     UNION
+
     SELECT CAST(shipping_limit_date AS date)
     FROM {{ ref('stg_order_items') }}
     WHERE shipping_limit_date IS NOT NULL
 
     UNION
+
     SELECT CAST(review_creation_date AS date)
     FROM {{ ref('stg_order_reviews') }}
     WHERE review_creation_date IS NOT NULL
 
     UNION
+
     SELECT CAST(review_answer_timestamp AS date)
     FROM {{ ref('stg_order_reviews') }}
     WHERE review_answer_timestamp IS NOT NULL
@@ -48,32 +55,31 @@ bounds AS (
         MAX(full_date) AS end_date
     FROM all_dates
 ),
-numbers AS (
-    -- Counter 0,1,2,... taken from the rows of stg_orders (99k rows >> ~1,300 days needed).
-    SELECT ROW_NUMBER() OVER (ORDER BY order_id) - 1 AS n
-    FROM {{ ref('stg_orders') }}
-),
 calendar AS (
-    SELECT DATEADD(day, CAST(n.n AS int), b.start_date) AS full_date
-    FROM numbers AS n
-    CROSS JOIN bounds AS b
-    WHERE n.n <= DATEDIFF(day, b.start_date, b.end_date)
+    -- PostgreSQL has generate_series, so no helper "numbers" table is needed.
+    SELECT CAST(gs AS date) AS full_date
+    FROM bounds AS b
+    CROSS JOIN LATERAL generate_series(
+        CAST(b.start_date AS timestamp),
+        CAST(b.end_date AS timestamp),
+        INTERVAL '1 day'
+    ) AS gs
 ),
 calendar_parts AS (
     SELECT
         full_date,
-        -- 0 = Monday ... 6 = Sunday (1900-01-01 was a Monday); independent of SQL Server language/DATEFIRST
-        DATEDIFF(day, CAST('1900-01-01' AS date), full_date) % 7 AS weekday_number
+        -- 0 = Monday ... 6 = Sunday (1900-01-01 was a Monday)
+        (full_date - DATE '1900-01-01') % 7 AS weekday_number
     FROM calendar
 )
 SELECT
-    CONVERT(int, CONVERT(char(8), full_date, 112)) AS date_key,
+    CAST(to_char(full_date, 'YYYYMMDD') AS integer) AS date_key,
     full_date,
-    DATEPART(year, full_date) AS calendar_year,
-    DATEPART(quarter, full_date) AS calendar_quarter,
-    DATEPART(month, full_date) AS calendar_month,
-    DATEPART(day, full_date) AS day_of_month,
-    CASE DATEPART(month, full_date)
+    CAST(EXTRACT(year FROM full_date) AS integer) AS calendar_year,
+    CAST(EXTRACT(quarter FROM full_date) AS integer) AS calendar_quarter,
+    CAST(EXTRACT(month FROM full_date) AS integer) AS calendar_month,
+    CAST(EXTRACT(day FROM full_date) AS integer) AS day_of_month,
+    CASE CAST(EXTRACT(month FROM full_date) AS integer)
         WHEN 1 THEN 'January'   WHEN 2 THEN 'February' WHEN 3 THEN 'March'
         WHEN 4 THEN 'April'     WHEN 5 THEN 'May'      WHEN 6 THEN 'June'
         WHEN 7 THEN 'July'      WHEN 8 THEN 'August'   WHEN 9 THEN 'September'

@@ -20,11 +20,10 @@ WITH order_rows AS (
         o.order_estimated_delivery_date
     FROM {{ ref('stg_orders') }} AS o
     {% if is_incremental() %}
-    WHERE o.order_purchase_timestamp >= DATEADD(
-        day,
-        -{{ var('incremental_lookback_days', 30) }},
-        (SELECT COALESCE(MAX(order_purchase_timestamp), CONVERT(datetime2(0), '1900-01-01')) FROM {{ this }})
-    )
+    WHERE o.order_purchase_timestamp >= (
+        SELECT COALESCE(MAX(order_purchase_timestamp), TIMESTAMP '1900-01-01')
+        FROM {{ this }}
+    ) - ({{ var('incremental_lookback_days', 30) }} * INTERVAL '1 day')
     {% endif %}
 ),
 item_totals AS (
@@ -56,7 +55,7 @@ latest_review AS (
             review_score,
             ROW_NUMBER() OVER (
                 PARTITION BY order_id
-                ORDER BY review_answer_timestamp DESC, review_id DESC
+                ORDER BY review_answer_timestamp DESC NULLS LAST, review_id DESC
             ) AS review_recency_rank
         FROM {{ ref('stg_order_reviews') }}
     ) AS ranked_reviews
@@ -80,18 +79,21 @@ SELECT
     lr.review_score,
     CASE
         WHEN orr.order_approved_at IS NOT NULL
-        THEN DATEDIFF(hour, orr.order_purchase_timestamp, orr.order_approved_at)
+        THEN CAST(
+            EXTRACT(EPOCH FROM (
+                date_trunc('hour', orr.order_approved_at) - date_trunc('hour', orr.order_purchase_timestamp)
+            )) / 3600 AS integer)
         ELSE NULL
     END AS approval_hours,
     CASE
         WHEN orr.order_delivered_customer_date IS NOT NULL
-        THEN DATEDIFF(day, CAST(orr.order_purchase_timestamp AS date), CAST(orr.order_delivered_customer_date AS date))
+        THEN CAST(orr.order_delivered_customer_date AS date) - CAST(orr.order_purchase_timestamp AS date)
         ELSE NULL
     END AS delivery_days,
     CASE
         WHEN orr.order_delivered_customer_date IS NOT NULL
          AND orr.order_estimated_delivery_date IS NOT NULL
-        THEN DATEDIFF(day, orr.order_estimated_delivery_date, CAST(orr.order_delivered_customer_date AS date))
+        THEN CAST(orr.order_delivered_customer_date AS date) - orr.order_estimated_delivery_date
         ELSE NULL
     END AS delivery_delay_days,
     CASE
