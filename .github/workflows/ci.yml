@@ -40,7 +40,9 @@ jobs:
           fi
 
       - name: dbt parse
-        run: dbt parse --project-dir dbt_project
+        run: |
+          dbt deps --project-dir dbt_project
+          dbt parse --project-dir dbt_project
 
   docker-build:
     runs-on: ubuntu-latest

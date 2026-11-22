@@ -1,0 +1,88 @@
+version: 2
+
+models:
+  - name: stg_orders
+    description: "Cleaned order header data. Nullable lifecycle timestamps are retained as NULL rather than fabricated."
+    columns:
+      - name: order_id
+        tests: [not_null, unique]
+      - name: customer_id
+        tests: [not_null]
+      - name: order_status
+        tests: [not_null]
+
+  - name: stg_order_items
+    description: "Cleaned order lines; the row grain remains one order item."
+    columns:
+      - name: order_id
+        tests: [not_null]
+      - name: order_item_id
+        tests: [not_null]
+      - name: item_price
+        tests: [not_null]
+      - name: freight_value
+        tests: [not_null]
+
+  - name: stg_customers
+    description: "Standardized customer identifiers and location text. ZIP prefixes remain strings to preserve leading zeros."
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+      - name: customer_unique_id
+        tests: [not_null]
+
+  - name: stg_products
+    description: "Standardized product attributes with English category names filled from the translation lookup when required."
+    columns:
+      - name: product_id
+        tests: [not_null, unique]
+
+  - name: stg_sellers
+    description: "Standardized seller identifiers and location text."
+    columns:
+      - name: seller_id
+        tests: [not_null, unique]
+
+  
+  - name: stg_order_payments
+    description: "Cleaned payment rows; payment sequence is preserved because one order may have multiple payment records."
+    columns:
+      - name: order_id
+        tests: [not_null]
+      - name: payment_sequential
+        tests: [not_null]
+      - name: payment_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['boleto', 'credit_card', 'debit_card', 'not_defined', 'voucher']
+
+  - name: stg_order_reviews
+    description: "Cleaned customer reviews. Grain: review_id + order_id."
+    columns:
+      - name: review_id
+        tests:
+          - not_null
+      - name: order_id
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - review_id
+              - order_id
+
+  - name: stg_category_translation
+    description: "Prepared product-category translation lookup."
+    columns:
+      - name: product_category_name
+        tests: [not_null, unique]
+
+
+  - name: stg_geolocation
+    description: "Prepared zip-prefix geolocation reference. It is not joined to fact rows in this version because the source contains repeated coordinate observations."
+    columns:
+      - name: geolocation_zip_code_prefix
+        tests: [not_null]
