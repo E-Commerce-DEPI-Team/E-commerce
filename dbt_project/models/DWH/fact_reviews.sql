@@ -23,11 +23,10 @@ WITH review_rows AS (
     INNER JOIN {{ ref('stg_orders') }} AS o
         ON r.order_id = o.order_id
     {% if is_incremental() %}
-    WHERE r.review_creation_date >= DATEADD(
-        day,
-        -{{ var('incremental_lookback_days', 30) }},
-        (SELECT COALESCE(MAX(review_creation_date), CONVERT(datetime2(0), '1900-01-01')) FROM {{ this }})
-    )
+    WHERE r.review_creation_date >= (
+        SELECT COALESCE(MAX(review_creation_date), TIMESTAMP '1900-01-01')
+        FROM {{ this }}
+    ) - ({{ var('incremental_lookback_days', 30) }} * INTERVAL '1 day')
     {% endif %}
 )
 SELECT
