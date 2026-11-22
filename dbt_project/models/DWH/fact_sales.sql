@@ -27,11 +27,10 @@ WITH order_lines AS (
     INNER JOIN {{ ref('stg_orders') }} AS o
         ON oi.order_id = o.order_id
     {% if is_incremental() %}
-    WHERE o.order_purchase_timestamp >= DATEADD(
-        day,
-        -{{ var('incremental_lookback_days', 30) }},
-        (SELECT COALESCE(MAX(order_purchase_timestamp), CONVERT(datetime2(0), '1900-01-01')) FROM {{ this }})
-    )
+    WHERE o.order_purchase_timestamp >= (
+        SELECT COALESCE(MAX(order_purchase_timestamp), TIMESTAMP '1900-01-01')
+        FROM {{ this }}
+    ) - ({{ var('incremental_lookback_days', 30) }} * INTERVAL '1 day')
     {% endif %}
 )
 SELECT
@@ -53,13 +52,13 @@ SELECT
     ol.item_price + ol.freight_value AS item_total_amount,
     CASE
         WHEN ol.order_delivered_customer_date IS NOT NULL
-        THEN DATEDIFF(day, CAST(ol.order_purchase_timestamp AS date), CAST(ol.order_delivered_customer_date AS date))
+        THEN CAST(ol.order_delivered_customer_date AS date) - CAST(ol.order_purchase_timestamp AS date)
         ELSE NULL
     END AS delivery_days,
     CASE
         WHEN ol.order_delivered_customer_date IS NOT NULL
          AND ol.order_estimated_delivery_date IS NOT NULL
-        THEN DATEDIFF(day, ol.order_estimated_delivery_date, CAST(ol.order_delivered_customer_date AS date))
+        THEN CAST(ol.order_delivered_customer_date AS date) - ol.order_estimated_delivery_date
         ELSE NULL
     END AS delivery_delay_days
 FROM order_lines AS ol
