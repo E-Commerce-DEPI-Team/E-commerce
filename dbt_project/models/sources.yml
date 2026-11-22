@@ -1,0 +1,70 @@
+
+version: 2
+
+sources:
+  - name: olist_staging
+    description: "Prepared Olist tables produced by Person 1. The CSV files must be loaded into SQL Server before dbt is run."
+    database: OlistDB
+    schema: dbo
+    tables:
+      - name: olist_orders_staging
+        description: "One row per order header, including customer, status and lifecycle timestamps."
+        columns:
+          - name: order_id
+            tests: [not_null, unique]
+          - name: customer_id
+            tests: [not_null]
+
+      - name: olist_order_items_staging
+        description: "One row per product line within an order. Grain: order_id + order_item_id."
+        columns:
+          - name: order_id
+            tests: [not_null]
+          - name: order_item_id
+            tests: [not_null]
+
+      - name: olist_customers_staging
+        description: "Customer address records used by orders."
+        columns:
+          - name: customer_id
+            tests: [not_null, unique]
+
+      - name: olist_products_staging
+        description: "Product attributes, including the English category label already present in Person 1's staging output."
+        columns:
+          - name: product_id
+            tests: [not_null, unique]
+
+      - name: olist_sellers_staging
+        description: "Seller address records."
+        columns:
+          - name: seller_id
+            tests: [not_null, unique]
+
+      - name: olist_order_payments_staging
+        description: "Payment installments/records. Grain: order_id + payment_sequential."
+        columns:
+          - name: order_id
+            tests: [not_null]
+          - name: payment_sequential
+            tests: [not_null]
+
+      - name: olist_order_reviews_staging
+        description: "Customer reviews. Grain: review_id + order_id."
+        columns:
+          - name: review_id
+            tests: [not_null]
+          - name: order_id
+            tests: [not_null]
+
+      - name: olist_category_translation_staging
+        description: "Portuguese-to-English product category translation lookup."
+        columns:
+          - name: product_category_name
+            tests: [not_null, unique]
+
+      - name: olist_geolocation_staging
+        description: "Zip-prefix geolocation reference. Retained as a staging view; not joined directly into facts because it contains repeated coordinates."
+        columns:
+          - name: geolocation_zip_code_prefix
+            tests: [not_null]
