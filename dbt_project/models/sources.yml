@@ -3,9 +3,9 @@ version: 2
 
 sources:
   - name: olist_staging
-    description: "Prepared Olist tables produced by Person 1. The CSV files must be loaded into SQL Server before dbt is run."
-    database: OlistDB
-    schema: dbo
+    description: "Prepared Olist tables produced by Person 1. The CSV files must be loaded into PostgreSQL before dbt is run."
+    database: olist_dwh
+    schema: raw
     tables:
       - name: olist_orders_staging
         description: "One row per order header, including customer, status and lifecycle timestamps."
